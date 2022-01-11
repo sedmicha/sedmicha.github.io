@@ -1,0 +1,54 @@
+body {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+}
+
+.colorChoice {
+    margin: 0;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+}
+
+.menuTitle {
+    font-size: 13pt;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+#logo {
+    font-size: 36pt;
+    font-style: italic;
+    font-weight: bold;
+    margin: 10px;
+    text-align: center;
+}
+
+#panel {
+    flex-basis: 300px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    background: #bababa;
+    border: 1px solid #111;
+    padding: 10px;
+}
+
+#canvas {
+    flex-basis: auto;
+    flex-grow: 1;
+    flex-shrink: 1;
+    background: #ebebeb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+#canvas canvas {
+    box-sizing: content-box;
+    display: block;
+    border: 1px solid #444444;
+    box-shadow: 3px 3px 10px 3px #444444;
+}
