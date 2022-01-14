@@ -1,3 +1,4 @@
+
 body {
     display: flex;
     margin: 0;
@@ -9,30 +10,52 @@ body {
 .colorChoice {
     margin: 0;
     padding: 0;
-    width: 24px;
-    height: 24px;
+    width: 27px;
+    height: 27px;
     border-radius: 20px;
     border: 1px solid black;
 }
 
-.menuTitle {
-    font-size: 13pt;
+.sectionTitle {
+    font-size: 14pt;
     font-weight: bold;
-    margin-bottom: 5px;
+    padding-bottom: 8px;
+}
+
+.section {
+    border-top: 1px solid #cdcdcd;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+input[type="number"] {
+    width: 100px;
+}
+
+.row {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+.col1 {
+    width: 150px;
+    display: inline-block;
+}
+
+.col2 {
+    display: inline-block;
 }
 
 #logo {
-    font-size: 36pt;
-    font-style: italic;
-    font-weight: bold;
-    font-family: cursive;
-    margin: 10px;
-    text-align: center;
-    color: #888888;
+    background-image: url("logo.png");
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+    height: 110px;
 }
 
 #panel {
-    flex-basis: 300px;
+    flex-basis: 310px;
     flex-grow: 0;
     flex-shrink: 0;
     background: #f2f2f2;

@@ -5,85 +5,124 @@
     </head>
     <body>
         <div id="panel">
-            <div id="logo">DripPaint</div>
-            <br>
-            <button id="undoBtn">Undo</button>
-            <button id="redoBtn">Redo</button><br>
-            <button id="clearBtn">Clear canvas</button><br>
-            <button id="saveImgBtn">Save as image</button><br>
-            <br>
-            <div class="menuTitle">Colors</div>
-            Brush:
-            <input type="color" id="brushColor" value="#000000"><br>
-            <button class="colorChoice colorChoiceBrush" data-color="#BA1B17"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#F5853D"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#E3B94B"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#E9D29C"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#578E95"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#427495"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#091A4E"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#79521B"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#080000"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#E7E7E2"></button><br>
-            <button class="colorChoice colorChoiceBrush" data-color="#DD5426"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#FFBF05"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#CDC865"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#F9F6DD"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#9EB9AC"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#7FB9CD"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#50616A"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#6D6B52"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#BBBBB8"></button>
-            <button class="colorChoice colorChoiceBrush" data-color="#FFFFFF"></button>
-            <br>
-            Background:
-            <input type="color" id="bgColor" value="#eeeeee"><br>
-            <button class="colorChoice colorChoiceBackground" data-color="#BA1B17"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#F5853D"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#E3B94B"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#E9D29C"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#578E95"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#427495"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#091A4E"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#79521B"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#080000"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#E7E7E2"></button><br>
-            <button class="colorChoice colorChoiceBackground" data-color="#DD5426"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#FFBF05"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#CDC865"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#F9F6DD"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#9EB9AC"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#7FB9CD"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#50616A"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#6D6B52"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#BBBBB8"></button>
-            <button class="colorChoice colorChoiceBackground" data-color="#FFFFFF"></button>
-            <br>
-            <br>
-            <div class="menuTitle">Canvas size</div>
-            Width:
-            <input type="number" id="widthInput"><br>
-            Height:
-            <input type="number" id="heightInput"><br>
-            <input type="checkbox" id="fitToWindowChkbox">Fit to window<br>
-            <button id="setSizeBtn">Set size</button>
-            <br>
-            <br>
-            <div class="menuTitle">Brush options</div>
-            Min thickness:<input type="number" id="minDotSizeInput">
-            <br>
-            Max thickness:<input type="number" id="maxDotSizeInput">
-            <br>
-            Speed memory:<input type="number" id="dotSizeNumPtsInput">
-            <br>
-            Sensitivity:<input type="number" id="dotSizeLenPtsInput">
-            <br>
-            <button id="resetDotParamBtn">Reset brush options</button>
-            <br>
-            <br>
-            <p style="font-size:10pt">
-                Note: Feel free to refresh or close the page and come back later, everything stays saved :)
-            </p>
+            <div id="logo"></div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+                <button id="undoBtn">Undo</button><button id="redoBtn">Redo</button><button id="clearBtn">Clear canvas</button><button id="saveImgBtn">Save as image</button>
+            </div>
+            <div class="section">
+                <div class="sectionTitle">Colors</div>
+                <div class="row">
+                    <div class="col1">
+                        Brush:
+                    </div>
+                    <div class="col2">
+                        <input type="color" id="brushColor" value="#000000">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding-top: 3px; padding-bottom: 3px">
+                    <button class="colorChoice colorChoiceBrush" data-color="#BA1B17"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#F5853D"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#E3B94B"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#E9D29C"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#578E95"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#427495"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#091A4E"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#79521B"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#080000"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#E7E7E2"></button>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding-bottom: 8px;">
+                    <button class="colorChoice colorChoiceBrush" data-color="#DD5426"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#FFBF05"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#CDC865"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#F9F6DD"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#9EB9AC"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#7FB9CD"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#50616A"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#6D6B52"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#BBBBB8"></button>
+                    <button class="colorChoice colorChoiceBrush" data-color="#FFFFFF"></button>
+                </div>
+
+                <div class="row" style="padding-top: 8px">
+                    <div class="col1">
+                        Background:
+                    </div>
+                    <div class="col2">
+                        <input type="color" id="bgColor" value="#eeeeee">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding-top: 3px; padding-bottom: 3px">
+                    <button class="colorChoice colorChoiceBackground" data-color="#BA1B17"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#F5853D"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#E3B94B"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#E9D29C"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#578E95"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#427495"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#091A4E"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#79521B"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#080000"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#E7E7E2"></button>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding-bottom: 3px">
+                    <button class="colorChoice colorChoiceBackground" data-color="#DD5426"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#FFBF05"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#CDC865"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#F9F6DD"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#9EB9AC"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#7FB9CD"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#50616A"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#6D6B52"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#BBBBB8"></button>
+                    <button class="colorChoice colorChoiceBackground" data-color="#FFFFFF"></button>
+                </div>
+            </div>
+
+
+            <div class="section">
+                <div class="sectionTitle">Canvas size</div>
+                <div class="row">
+                    <div class="col1">Width:</div>
+                    <div class="col2"><input type="number" id="widthInput"></div>
+                </div>
+                <div class="row">
+                    <div class="col1">Height:</div>
+                    <div class="col2"><input type="number" id="heightInput"></div>
+                </div>
+                <div class="row" style="padding-top: 8px">
+                    <div class="col1"><button id="setSizeBtn">Set size</button></div>
+                    <div class="col2"><input type="checkbox" id="fitToWindowChkbox"> Fit to window</span></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="sectionTitle">Brush options</div>
+                <div class="row">
+                    <div class="col1">Min thickness:</div>
+                    <div class="col2"><input type="number" id="minDotSizeInput"></div>
+                </div>
+                <div class="row">
+                    <div class="col1">Max thickness:</div>
+                    <div class="col2"><input type="number" id="maxDotSizeInput"></div>
+                </div>
+                <div class="row">
+                    <div class="col1">Speed memory:</div>
+                    <div class="col2"><input type="number" id="dotSizeNumPtsInput"></div>
+                </div>
+                <div class="row">
+                    <div class="col1">Sensitivity:</div>
+                    <div class="col2"><input type="number" id="dotSizeLenPtsInput"></div>
+                </div>
+                <div class="row" style="padding-top: 8px">
+                    <button id="resetDotParamBtn">Reset brush options</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <p style="font-size:10pt">
+                    Note: Feel free to refresh or close the page and come back later, everything stays saved :)
+                </p>
+            </div>
         </div>
         <div id="canvas">
             <div id="canvasBack">
