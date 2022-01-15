@@ -45,6 +45,18 @@ let historyStep;
 
 let painter;
 
+function clamp(value, minValue, maxValue) {
+    return Math.min(Math.max(value, minValue), maxValue);
+}
+
+function lerp(value, [a0, a1], [b0, b1]) {
+    return (value - a0) / (a1 - a0) * (b1 - b0) + b0;
+}
+
+function rand(min, max) {
+    return lerp(Math.random(), [0, 1], [min, max]);
+}
+
 function dot_([x, y], size) {
     ctx.beginPath();
     ctx.arc(x, y, size, 0, Math.PI*2, true);
@@ -87,10 +99,7 @@ function line_([x0, y0], [x1, y1], thickness) {
 
 function spline_(p0, p1, p2, p3, startThickness, endThickness, step) {
     const s = new CatmullRomSpline(p0, p1, p2, p3, 0.5, 0);
-    for (let t = 0; t < 1.0; t += step) {
-        //console.log(t);
-        //console.log(s.getPoint(t));
-        //dot_(s.getPoint(t), thickness);
+    for (let t = 0; t <= 1.0; t += step) {
         const thickness = (endThickness - startThickness) * t + startThickness;
         line_(s.getPoint(t), s.getPoint(t + step), thickness);
     }
@@ -131,36 +140,108 @@ class CatmullRomSpline {
 class Painter {
     points = []
     sizes = []
+    times = []
+    strokeActive = false;
 
     beginStroke() {
         this.points = [];
         this.sizes = [];
+        this.times = [];
+        this.strokeActive = true;
+        this.multiplier = rand(0.5, 1.5);
     }
 
     strokeTo(p, size) {
         let nPts = this.points.length;
-        if (nPts == 0 || dist_(this.points[nPts - 1], p) > 0.01) {
+        if (nPts == 0 || dist_(this.points[nPts - 1], p) > 1) {
             this.points.push(p);
+            this.times.push(Date.now());
+            size = this.calcSize();
             this.sizes.push(size);
-        } else {
-            this.sizes[nPts - 1] = size;
+            this.drawStroke();
+            this.randomSplash();
         }
-        nPts = this.points.length;
+    }
 
-        if (nPts >= 4) {
+    calcSize() {
+        let now = Date.now();
+        let i = this.points.length - 2;
+        let timeLimit = 100;
+        let distance = 0;
+        let duration = 1;
+        while (i >= 0 && now - this.times[i] < timeLimit) {
+            duration = now - this.times[i];
+            distance += dist_(this.points[i], this.points[i + 1]);
+            i--;
+        }
+        let speed = distance / Math.max(1, duration);
+        //let size = lerp(distance, [1.0, 100], [15, 1]);
+        let size;
+        if (speed >= 0.0 && speed <= 1.0) size = lerp(speed, [0.0, 0.3], [20, 15]);
+        else size = lerp(speed, [0.7, 1.5], [15, 1]);
+
+        size = clamp(size, 1, 20) * this.multiplier;
+        console.log(`distance=${distance} speed=${speed} size=${size}`);
+
+        /*
+        let num = Math.min(10, this.points.length);
+        let distance = 0;
+        for (let i = this.points.length - num; i < this.points.length - 1; i++) {
+            distance += dist_(this.points[i], this.points[i + 1]);
+        }
+        let duration = Date.now() - this.times[this.times.length - num];
+        let speed = distance / Math.max(1, duration);
+        //let size = 1 / speed;
+        let size = lerp(speed, [0.1, 1.5], [15, 1]);
+        size = clamp(size, 1, 15);
+        console.log(`speed=${speed} size=${size}`);
+        */
+        return size;
+    }
+
+    drawStroke() {
+        let nPts = this.points.length;
+        if (nPts == 1) {
+            dot_(this.points[0], this.sizes[0]);
+        } else if (nPts == 2) {
+            line_(this.points[0], this.points[1], this.sizes[1]);
+        } else if (nPts >= 4) {
             const d = dist_(this.points[nPts - 3], this.points[nPts - 2]);
             if (d < 1) {
                 dot_(this.points[nPts - 2], this.sizes[nPts - 1]);
-            } else if (d < 5) {
+            } else if (d < 1) {
                 line_(this.points[nPts - 3], this.points[nPts - 2], this.sizes[nPts - 1]);
             } else {
-                spline_(this.points[nPts - 4], this.points[nPts - 3], this.points[nPts - 2], this.points[nPts - 1], this.sizes[nPts - 2], this.sizes[nPts - 1], 0.1);
+                spline_(this.points[nPts - 4], this.points[nPts - 3], this.points[nPts - 2], this.points[nPts - 1], this.sizes[nPts - 2], this.sizes[nPts - 1], 1 / d);
             }
         }
     }
 
-    endStroke() {
+    randomSplash() {
+        let [pX, pY] = this.points[this.points.length - 1];
+        let pos = [pX + rand(-10, 10), pY + rand(-10, 10)];
+        let size = rand(1, 10);
+        dot_(pos, size);
+    }
 
+    endStroke() {
+        this.updateSize();
+        this.strokeActive = false;
+    }
+
+    updateSize() {
+        if (!this.strokeActive || this.points.length == 0)
+            return;
+
+        this.sizes[this.points.length - 1] = this.calcSize();
+    }
+
+    update() {
+        if (!this.strokeActive || this.points.length == 0)
+            return;
+
+        this.updateSize();
+        this.drawStroke();
     }
 }
 
@@ -319,6 +400,7 @@ function mouseDownFn(e) {
     lineSizes = [];
     mouseDown = true;
     painter.beginStroke();
+    linePoint();
 }
 
 canvas.onmousedown = (e) => {
@@ -333,6 +415,8 @@ canvas.onmouseenter = (e) => {
 
 canvas.onmousemove = (e) => {
     mousePos = new Point(e.offsetX, e.offsetY);
+    if (mouseDown)
+        linePoint();
 };
 
 function mouseUp(e) {
@@ -340,7 +424,6 @@ function mouseUp(e) {
         return;
 
     mousePos = new Point(e.offsetX, e.offsetY);
-    console.log(mousePos);
     linePoint();
 
     mouseDown = false;
@@ -398,8 +481,8 @@ function linePoint() {
 setInterval(() => {
     if (!mouseDown)
         return;
-
-    linePoint();
+    painter.update();
+    // linePoint();
 }, 10);
 
 
