@@ -43,14 +43,133 @@ let lineSizes = [];
 let lines;
 let historyStep;
 
+let painter;
+
+function dot_([x, y], size) {
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI*2, true);
+    ctx.closePath();
+    ctx.fill();
+}
+
+function dist_([x0, y0], [x1, y1]) {
+    return Math.sqrt(Math.pow(x0 - x1, 2) + Math.pow(y0 - y1, 2));
+}
+
+function line_([x0, y0], [x1, y1], thickness) {
+    if (Math.abs(x0 - x1) <= 0.1 && Math.abs(y0 - y1) <= 0.1) {
+        dot_([x0, y0], thickness);
+        return;
+    }
+
+    if (Math.abs(x0 - x1) > Math.abs(y0 - y1)) {
+        const dy = (y1 - y0) / (x1 - x0);
+        const dx = x0 > x1 ? -1 : 1;
+        let x = x0;
+        let y = y0;
+        while (Math.abs(x - x1) > Math.abs((x + dx) - x1)) {
+            x += dx;
+            y += dx * dy;
+            dot_([x, y], thickness);
+        }
+    } else {
+        const dx = (x1 - x0) / (y1 - y0);
+        const dy = y0 > y1 ? -1 : 1;
+        let x = x0;
+        let y = y0;
+        while (Math.abs(y - y1) > Math.abs((y + dy) - y1)) {
+            x += dx * dy;
+            y += dy;
+            dot_([x, y], thickness);
+        }
+    }
+}
+
+function spline_(p0, p1, p2, p3, startThickness, endThickness, step) {
+    const s = new CatmullRomSpline(p0, p1, p2, p3, 0.5, 0);
+    for (let t = 0; t < 1.0; t += step) {
+        //console.log(t);
+        //console.log(s.getPoint(t));
+        //dot_(s.getPoint(t), thickness);
+        const thickness = (endThickness - startThickness) * t + startThickness;
+        line_(s.getPoint(t), s.getPoint(t + step), thickness);
+    }
+}
+
+class CatmullRomSpline {
+    constructor(p0, p1, p2, p3, alpha, tension) {
+        const t0 = 0.0;
+        const t1 = t0 + Math.pow(dist_(p0, p1), alpha);
+        const t2 = t1 + Math.pow(dist_(p1, p2), alpha);
+        const t3 = t2 + Math.pow(dist_(p2, p3), alpha);
+
+        const m1_ = (p0, p1, p2) => (1-tension) * (t2-t1) * ((p1-p0)/(t1-t0) - (p2-p0)/(t2-t0) + (p2-p1)/(t2-t1));
+        const m2_ = (p1, p2, p3) => (1-tension) * (t2-t1) * ((p2-p1)/(t2-t1) - (p3-p1)/(t3-t1) + (p3-p2)/(t3-t2));
+
+        const m1 = [m1_(p0[0], p1[0], p2[0]), m1_(p0[1], p1[1], p2[1])];
+        const m2 = [m2_(p1[0], p2[0], p3[0]), m2_(p1[1], p2[1], p3[1])];
+
+        const a = [
+            2.0 * (p1[0] - p2[0]) + m1[0] + m2[0],
+            2.0 * (p1[1] - p2[1]) + m1[1] + m2[1]
+        ];
+        const b = [
+            -3.0 * (p1[0] - p2[0]) - m1[0] - m1[0] - m2[0],
+            -3.0 * (p1[1] - p2[1]) - m1[1] - m1[1] - m2[1]
+        ];
+        this.segments = [a, b, m1, p1];
+    }
+
+    getPoint(t) {
+        return [
+            this.segments[0][0]*t*t*t + this.segments[1][0]*t*t + this.segments[2][0]*t + this.segments[3][0],
+            this.segments[0][1]*t*t*t + this.segments[1][1]*t*t + this.segments[2][1]*t + this.segments[3][1]
+        ];
+    }
+}
+
+class Painter {
+    points = []
+    sizes = []
+
+    beginStroke() {
+        this.points = [];
+        this.sizes = [];
+    }
+
+    strokeTo(p, size) {
+        let nPts = this.points.length;
+        if (nPts == 0 || dist_(this.points[nPts - 1], p) > 0.01) {
+            this.points.push(p);
+            this.sizes.push(size);
+        } else {
+            this.sizes[nPts - 1] = size;
+        }
+        nPts = this.points.length;
+
+        if (nPts >= 4) {
+            const d = dist_(this.points[nPts - 3], this.points[nPts - 2]);
+            if (d < 1) {
+                dot_(this.points[nPts - 2], this.sizes[nPts - 1]);
+            } else if (d < 5) {
+                line_(this.points[nPts - 3], this.points[nPts - 2], this.sizes[nPts - 1]);
+            } else {
+                spline_(this.points[nPts - 4], this.points[nPts - 3], this.points[nPts - 2], this.points[nPts - 1], this.sizes[nPts - 2], this.sizes[nPts - 1], 0.1);
+            }
+        }
+    }
+
+    endStroke() {
+
+    }
+}
+
 class Point {
     constructor(x, y) {
         this.x = x;
         this.y = y;
     }
 }
-
-const rgba2hex = (rgba) => `#${rgba.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+\.{0,1}\d*))?\)$/).slice(1).map((n, i) => (i === 3 ? Math.round(parseFloat(n) * 255) : parseFloat(n)).toString(16).padStart(2, '0').replace('NaN', '')).join('')}`
 
 function dist(a, b) {
     return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
@@ -73,6 +192,7 @@ function dot(p) {
     ctx.closePath();
     ctx.fill();
 }
+
 
 function line(a, b) {
     if (Math.abs(a.x - b.x) <= 0.1 && Math.abs(a.y - b.y) <= 0.1) {
@@ -198,6 +318,7 @@ function mouseDownFn(e) {
     linePts = [];
     lineSizes = [];
     mouseDown = true;
+    painter.beginStroke();
 }
 
 canvas.onmousedown = (e) => {
@@ -239,6 +360,7 @@ function mouseUp(e) {
     numLinePts = 0;
     linePts = [];
     lineSizes = [];
+    painter.endStroke();
 
     historyStep += 1;
     updateHistoryBtns();
@@ -268,9 +390,9 @@ function linePoint() {
     linePts.push(mousePos);
     lineSizes.push(size);
 
-    if (prevPt != null)
-        line(prevPt, mousePos);
-    prevPt = mousePos;
+    // if (numLinePts > 1)
+    //     line(linePts[numLinePts - 2], linePts[numLinePts - 1]);
+    painter.strokeTo([mousePos.x, mousePos.y], size);
 }
 
 setInterval(() => {
@@ -395,7 +517,6 @@ resetDotParamBtn.onclick = () => {
 };
 
 function colorChoiceBrush(color) {
-    console.log('hello', color);
     brushColorPicker.value = color;
     brushColor = color;
     ctx.fillStyle = color;
@@ -422,4 +543,5 @@ document.querySelectorAll('.colorChoiceBackground').forEach(el => {
     el.onclick = () => colorChoiceBackground(color);
 });
 
+painter = new Painter();
 loadState();
