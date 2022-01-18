@@ -19,14 +19,7 @@ const dotSizeNumPtsInput = document.getElementById("dotSizeNumPtsInput");
 const dotSizeLenPtsInput = document.getElementById("dotSizeLenPtsInput");
 const resetDotParamBtn = document.getElementById("resetDotParamBtn");
 
-let mouseDown = false;
-let mousePos;
-let prevPt;
-let dotSize;
-let pts = [];
-let ptSizes = [];
-
-let numLinePts = 0;
+let isMouseDown = false;
 
 let minDotSize;
 let maxDotSize;
@@ -35,11 +28,9 @@ let dotSizeNumPts;
 
 let speedPts = 10;
 
-let fitToWindow ;
+let fitToWindow;
 let bgColor;
 let brushColor;
-let linePts = [];
-let lineSizes = [];
 let lines;
 let historyStep;
 
@@ -137,45 +128,79 @@ class CatmullRomSpline {
     }
 }
 
-class Painter {
-    points = []
-    sizes = []
-    times = []
-    strokeActive = false;
+class Stroke {
+    points = [];
+    sizes = [];
 
-    beginStroke() {
-        this.points = [];
-        this.sizes = [];
-        this.times = [];
-        this.strokeActive = true;
-        this.multiplier = rand(0.5, 1.5);
+    constructor(points = [], sizes = []) {
+        this.points = points;
+        this.sizes = sizes;
     }
 
-    strokeTo(p, size) {
-        let nPts = this.points.length;
-        if (nPts == 0 || dist_(this.points[nPts - 1], p) > 1) {
-            this.points.push(p);
+    drawSegment(i) {
+        if (i == 1) {
+            dot_(this.points[0], this.sizes[0]);
+        } else if (i == 2) {
+            line_(this.points[0], this.points[1], this.sizes[1]);
+        } else if (i >= 4) {
+            const d = dist_(this.points[i - 3], this.points[i - 2]);
+            if (d < 1) {
+                dot_(this.points[i - 2], this.sizes[i - 1]);
+            } else if (d < 1) {
+                line_(this.points[i - 3], this.points[i - 2], this.sizes[i - 1]);
+            } else {
+                spline_(this.points[i - 4], this.points[i - 3], this.points[i - 2], this.points[i - 1], this.sizes[i - 2], this.sizes[i - 1], 1 / d);
+            }
+        }
+    }
+
+    drawLastSegment() {
+        this.drawSegment(this.points.length);
+    }
+
+    drawAllSegments() {
+        for (let i = 0; i <= this.points.length; i++) {
+            this.drawSegment(i);
+        }
+    }
+}
+
+class Brush {
+    strokeActive = false;
+    stroke = null;
+    times = [];
+
+    beginStroke() {
+        this.stroke = new Stroke();
+        this.times = [];
+        this.multiplier = rand(0.5, 1.5);
+        this.strokeActive = true;
+    }
+
+    strokeTo(p) {
+        let nPts = this.stroke.points.length;
+        if (nPts == 0 || dist_(this.stroke.points[nPts - 1], p) > 1) {
+            this.stroke.points.push(p);
             this.times.push(Date.now());
-            size = this.calcSize();
-            this.sizes.push(size);
-            this.drawStroke();
-            this.randomSplash();
+            let size = this.calcSize();
+            this.stroke.sizes.push(size);
+            this.stroke.drawLastSegment();
+            //this.randomSplash();
         }
     }
 
     calcSize() {
         let now = Date.now();
-        let i = this.points.length - 2;
+        let i = this.stroke.points.length - 2;
         let timeLimit = 100;
         let distance = 0;
         let duration = 1;
         while (i >= 0 && now - this.times[i] < timeLimit) {
             duration = now - this.times[i];
-            distance += dist_(this.points[i], this.points[i + 1]);
+            distance += dist_(this.stroke.points[i], this.stroke.points[i + 1]);
             i--;
         }
         let speed = distance / Math.max(1, duration);
-        //let size = lerp(distance, [1.0, 100], [15, 1]);
         let size;
         if (speed >= 0.0 && speed <= 1.0) size = lerp(speed, [0.0, 0.3], [20, 15]);
         else size = lerp(speed, [0.7, 1.5], [15, 1]);
@@ -183,42 +208,11 @@ class Painter {
         size = clamp(size, 1, 20) * this.multiplier;
         console.log(`distance=${distance} speed=${speed} size=${size}`);
 
-        /*
-        let num = Math.min(10, this.points.length);
-        let distance = 0;
-        for (let i = this.points.length - num; i < this.points.length - 1; i++) {
-            distance += dist_(this.points[i], this.points[i + 1]);
-        }
-        let duration = Date.now() - this.times[this.times.length - num];
-        let speed = distance / Math.max(1, duration);
-        //let size = 1 / speed;
-        let size = lerp(speed, [0.1, 1.5], [15, 1]);
-        size = clamp(size, 1, 15);
-        console.log(`speed=${speed} size=${size}`);
-        */
         return size;
     }
 
-    drawStroke() {
-        let nPts = this.points.length;
-        if (nPts == 1) {
-            dot_(this.points[0], this.sizes[0]);
-        } else if (nPts == 2) {
-            line_(this.points[0], this.points[1], this.sizes[1]);
-        } else if (nPts >= 4) {
-            const d = dist_(this.points[nPts - 3], this.points[nPts - 2]);
-            if (d < 1) {
-                dot_(this.points[nPts - 2], this.sizes[nPts - 1]);
-            } else if (d < 1) {
-                line_(this.points[nPts - 3], this.points[nPts - 2], this.sizes[nPts - 1]);
-            } else {
-                spline_(this.points[nPts - 4], this.points[nPts - 3], this.points[nPts - 2], this.points[nPts - 1], this.sizes[nPts - 2], this.sizes[nPts - 1], 1 / d);
-            }
-        }
-    }
-
     randomSplash() {
-        let [pX, pY] = this.points[this.points.length - 1];
+        let [pX, pY] = this.stroke.points[this.stroke.points.length - 1];
         let pos = [pX + rand(-10, 10), pY + rand(-10, 10)];
         let size = rand(1, 10);
         dot_(pos, size);
@@ -230,76 +224,14 @@ class Painter {
     }
 
     updateSize() {
-        if (!this.strokeActive || this.points.length == 0)
-            return;
-
-        this.sizes[this.points.length - 1] = this.calcSize();
+        if (this.strokeActive && this.stroke.points.length > 0)
+            this.stroke.sizes[this.stroke.points.length - 1] = Math.max(this.calcSize(), this.stroke.sizes[this.stroke.points.length - 1]);
     }
 
     update() {
-        if (!this.strokeActive || this.points.length == 0)
-            return;
-
-        this.updateSize();
-        this.drawStroke();
-    }
-}
-
-class Point {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-}
-
-function dist(a, b) {
-    return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
-}
-
-function calcSpeed() {
-    const len = Math.min(dotSizeNumPts, numLinePts);
-    let total = 0;
-    for (let i = pts.length - len + 1; i < pts.length; i++) {
-        total += dist(pts[i], pts[i - 1]);
-    }
-    if (total == 0)
-        return 0;
-    return total / (len - 1);
-}
-
-function dot(p) {
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, dotSize, 0, Math.PI*2, true);
-    ctx.closePath();
-    ctx.fill();
-}
-
-
-function line(a, b) {
-    if (Math.abs(a.x - b.x) <= 0.1 && Math.abs(a.y - b.y) <= 0.1) {
-        dot(a);
-        return;
-    }
-
-    if (Math.abs(a.x - b.x) > Math.abs(a.y - b.y)) {
-        const dy = (b.y - a.y) / (b.x - a.x);
-        const dx = a.x > b.x ? -1 : 1;
-        let x = a.x;
-        let y = a.y;
-        while (Math.abs(x - b.x) > 0.1) {
-            x += dx;
-            y += dx * dy;
-            dot(new Point(x, y));
-        }
-    } else {
-        const dx = (b.x - a.x) / (b.y - a.y);
-        const dy = a.y > b.y ? -1 : 1;
-        let x = a.x;
-        let y = a.y;
-        while (Math.abs(y - b.y) > 0.1) {
-            x += dx * dy;
-            y += dy;
-            dot(new Point(x, y));
+        if (this.strokeActive && this.stroke.points.length > 0) {
+            this.updateSize();
+            this.stroke.drawLastSegment();
         }
     }
 }
@@ -310,10 +242,8 @@ function redraw() {
     for (let i = 0; i < historyStep; i++) {
         const {color, pts, sizes} = lines[i];
         ctx.fillStyle = color;
-        for (let j = 1; j < pts.length; j++) {
-            dotSize = sizes[j];
-            line(pts[j], pts[j - 1]);
-        }
+        const stroke = new Stroke(pts, sizes);
+        stroke.drawAllSegments();
     }
     ctx.fillStyle = brushColor;
 }
@@ -345,13 +275,13 @@ function saveState(saveLines) {
         dotSizeNumPts: dotSizeNumPts,
         dotSizeLenPts: dotSizeLenPts
     };
-    localStorage.setItem('state', JSON.stringify(state));
+    localStorage.setItem('statev2', JSON.stringify(state));
     if (saveLines)
-        localStorage.setItem('lines', JSON.stringify(lines));
+        localStorage.setItem('linesv2', JSON.stringify(lines));
 }
 
 function loadState() {
-    const state = JSON.parse(localStorage.getItem("state")) ?? {};
+    const state = JSON.parse(localStorage.getItem("statev2")) ?? {};
     historyStep = state.historyStep ?? 0;
     fitToWindow = state.fitToWindow ?? true;
     fitToWindowChkbox.checked = fitToWindow;
@@ -381,7 +311,7 @@ function loadState() {
     widthInput.value = width;
     heightInput.value = height;
 
-    lines = JSON.parse(localStorage.getItem('lines')) || [];
+    lines = JSON.parse(localStorage.getItem('linesv2')) || [];
     updateHistoryBtns();
 
     redraw();
@@ -393,57 +323,47 @@ function updateHistoryBtns() {
 }
 
 
-function mouseDownFn(e) {
-    mousePos = new Point(e.offsetX, e.offsetY);
-    numLinePts = 0;
-    linePts = [];
-    lineSizes = [];
-    mouseDown = true;
-    painter.beginStroke();
-    linePoint();
+function mouseDown(e) {
+    isMouseDown = true;
+    brush.beginStroke();
+    addLinePoint([e.offsetX, e.offsetY]);
 }
 
 canvas.onmousedown = (e) => {
-    mouseDownFn(e);
+    mouseDown(e);
 };
 
 canvas.onmouseenter = (e) => {
     if (e.buttons == 0)
         return;
-    mouseDownFn(e);
+    mouseDown(e);
 };
 
 canvas.onmousemove = (e) => {
-    mousePos = new Point(e.offsetX, e.offsetY);
-    if (mouseDown)
-        linePoint();
+    if (isMouseDown)
+        addLinePoint([e.offsetX, e.offsetY]);
 };
 
 function mouseUp(e) {
-    if (!mouseDown)
+    if (!isMouseDown)
         return;
 
-    mousePos = new Point(e.offsetX, e.offsetY);
-    linePoint();
+    addLinePoint([e.offsetX, e.offsetY]);
 
-    mouseDown = false;
-    prevPt = null;
-    if (!linePts)
+    isMouseDown = false;
+    if (!brush.stroke.points)
         return;
 
     if (historyStep != lines.length) {
         lines.splice(historyStep);
     }
+    brush.endStroke();
     lines.push({
         color: brushColor,
-        pts: linePts,
-        sizes: lineSizes
+        pts: brush.stroke.points,
+        sizes: brush.stroke.sizes
     });
 
-    numLinePts = 0;
-    linePts = [];
-    lineSizes = [];
-    painter.endStroke();
 
     historyStep += 1;
     updateHistoryBtns();
@@ -452,37 +372,22 @@ function mouseUp(e) {
 }
 
 canvas.onmouseleave = (e) => {
-    console.log('leave');
     mouseUp(e);
 };
 
 canvas.onmouseup = (e) => {
-    console.log('up');
     mouseUp(e);
 };
 
-function linePoint() {
-    pts.push(mousePos);
-    numLinePts += 1;
-
-    let speed = calcSpeed();
-    let size = (1.0 - speed / dotSizeLenPts) * maxDotSize;
-    size = Math.max(size, minDotSize);
-    size = Math.min(size, maxDotSize);
-    dotSize = size;
-    linePts.push(mousePos);
-    lineSizes.push(size);
-
-    // if (numLinePts > 1)
-    //     line(linePts[numLinePts - 2], linePts[numLinePts - 1]);
-    painter.strokeTo([mousePos.x, mousePos.y], size);
+function addLinePoint(point) {
+    brush.strokeTo(point);
 }
 
 setInterval(() => {
-    if (!mouseDown)
+    if (!isMouseDown)
         return;
-    painter.update();
-    // linePoint();
+    brush.update();
+    // addLinePoint(point);
 }, 10);
 
 
@@ -615,7 +520,6 @@ function colorChoiceBackground(color) {
 }
 
 document.querySelectorAll('.colorChoiceBrush').forEach(el => {
-
     const color = el.getAttribute("data-color");
     el.style.backgroundColor = color;
     el.onclick = () => colorChoiceBrush(color);
@@ -626,5 +530,5 @@ document.querySelectorAll('.colorChoiceBackground').forEach(el => {
     el.onclick = () => colorChoiceBackground(color);
 });
 
-painter = new Painter();
+brush = new Brush();
 loadState();
