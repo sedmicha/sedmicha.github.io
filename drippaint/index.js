@@ -1,6 +1,6 @@
 const canvasParent = document.querySelector("#canvas");
 const canvasBackFrame = document.querySelector("#canvasBackFrame");
-const canvas = document.querySelector("canvas");
+const canvas = document.getElementById("paintingCanvas");
 const ctx = canvas.getContext("2d");
 const brushColorPicker = document.getElementById("brushColor");
 const bgColorPicker = document.getElementById("bgColor");
@@ -13,18 +13,23 @@ const saveImgBtn = document.getElementById("saveImgBtn");
 const fitToWindowChkbox = document.getElementById("fitToWindowChkbox");
 const widthInput = document.getElementById("widthInput");
 const heightInput = document.getElementById("heightInput");
-const minDotSizeInput = document.getElementById("minDotSizeInput");
-const maxDotSizeInput = document.getElementById("maxDotSizeInput");
-const dotSizeNumPtsInput = document.getElementById("dotSizeNumPtsInput");
-const dotSizeLenPtsInput = document.getElementById("dotSizeLenPtsInput");
+const minThicknessInput = document.getElementById("minThicknessInput");
+const maxThicknessInput = document.getElementById("maxThicknessInput");
+const speedThresholdInput = document.getElementById("speedThresholdInput");
+const speedSampleTimeInput = document.getElementById("speedSampleTimeInput");
 const resetDotParamBtn = document.getElementById("resetDotParamBtn");
+const minRandomMultiplierInput = document.getElementById("minRandomMultiplierInput");
+const maxRandomMultiplierInput = document.getElementById("maxRandomMultiplierInput");
 
 let isMouseDown = false;
 
-let minDotSize;
-let maxDotSize;
-let dotSizeLenPts;
-let dotSizeNumPts;
+let minThickness;
+let maxThickness;
+let speedSampleTime;
+let speedThreshold;
+let brushLerpSpline;
+let minRandomMultiplier;
+let maxRandomMultiplier;
 
 let speedPts = 10;
 
@@ -42,6 +47,14 @@ function clamp(value, minValue, maxValue) {
 
 function lerp(value, [a0, a1], [b0, b1]) {
     return (value - a0) / (a1 - a0) * (b1 - b0) + b0;
+}
+
+function lerpIntervals(value, as, bs) {
+    for (let i = 1; i < as.length; i++) {
+        if (value < as[i] || i == as.length - 1) {
+            return lerp(value, [as[i - 1], as[i]], [bs[i - 1], bs[i]]);
+        }
+    }
 }
 
 function rand(min, max) {
@@ -173,7 +186,7 @@ class Brush {
     beginStroke() {
         this.stroke = new Stroke();
         this.times = [];
-        this.multiplier = rand(0.5, 1.5);
+        this.multiplier = rand(minRandomMultiplier, maxRandomMultiplier);
         this.strokeActive = true;
     }
 
@@ -192,7 +205,7 @@ class Brush {
     calcSize() {
         let now = Date.now();
         let i = this.stroke.points.length - 2;
-        let timeLimit = 100;
+        let timeLimit = speedSampleTime;
         let distance = 0;
         let duration = 1;
         while (i >= 0 && now - this.times[i] < timeLimit) {
@@ -202,11 +215,14 @@ class Brush {
         }
         let speed = distance / Math.max(1, duration);
         let size;
-        if (speed >= 0.0 && speed <= 1.0) size = lerp(speed, [0.0, 0.3], [20, 15]);
-        else size = lerp(speed, [0.7, 1.5], [15, 1]);
+        size = lerpIntervals(speed, brushLerpSpline[0], brushLerpSpline[1]);
+        //console.log('size=',size);
+        //if (speed >= 0.0 && speed <= 1.0) size = lerp(speed, [0.0, 0.3], [20, 15]);
+        //else size = lerp(speed, [0.7, 1.5], [15, 1]);
 
-        size = clamp(size, 1, 20) * this.multiplier;
-        console.log(`distance=${distance} speed=${speed} size=${size}`);
+        size = clamp(size, minThickness, maxThickness);
+        size *= this.multiplier;
+        //console.log(`distance=${distance} speed=${speed} size=${size}`);
 
         return size;
     }
@@ -270,10 +286,11 @@ function saveState(saveLines) {
         bgColor: bgColor,
         width: canvas.width,
         height: canvas.height,
-        minDotSize: minDotSize,
-        maxDotSize: maxDotSize,
-        dotSizeNumPts: dotSizeNumPts,
-        dotSizeLenPts: dotSizeLenPts
+        minThickness: minThickness,
+        maxThickness: maxThickness,
+        speedThreshold: speedThreshold,
+        speedSampleTime: speedSampleTime,
+        brushLerpSpline: brushLerpSpline
     };
     localStorage.setItem('statev2', JSON.stringify(state));
     if (saveLines)
@@ -289,14 +306,19 @@ function loadState() {
     brushColorPicker.value = brushColor;
     bgColor = state.bgColor ?? "#ffffff";
     bgColorPicker.value = bgColor;
-    minDotSize = state.minDotSize ?? 1;
-    minDotSizeInput.value = minDotSize;
-    maxDotSize = state.maxDotSize ?? 10;
-    maxDotSizeInput.value = maxDotSize;
-    dotSizeNumPts = state.dotSizeNumPts ?? 10;
-    dotSizeNumPtsInput.value = dotSizeNumPts;
-    dotSizeLenPts = state.dotSizeLenPts ?? 10;
-    dotSizeLenPtsInput.value = dotSizeLenPts;
+    minThickness = state.minThickness ?? 1;
+    minThicknessInput.value = minThickness;
+    maxThickness = state.maxThickness ?? 20;
+    maxThicknessInput.value = maxThickness;
+    speedThreshold = state.speedThreshold ?? 1.5;
+    speedThresholdInput.value = speedThreshold;
+    speedSampleTime = state.speedSampleTime ?? 100;
+    speedSampleTimeInput.value = speedSampleTime;
+    brushLerpSpline = state.brushLerpSpline ?? [[0, 1, 1.5], [20, 10, 1]];
+    minRandomMultiplier = state.minRandomMultiplier ?? 0.5;
+    minRandomMultiplierInput.value = minRandomMultiplier;
+    maxRandomMultiplier = state.maxRandomMultiplier ?? 1.5;
+    maxRandomMultiplierInput.value = maxRandomMultiplier;
 
     let width, height;
     if (fitToWindow) {
@@ -310,6 +332,12 @@ function loadState() {
     canvas.height = height;
     widthInput.value = width;
     heightInput.value = height;
+
+    brushControl.axisRangeY = [minThickness, maxThickness];
+    brushControl.axisRangeX = [0, speedThreshold];
+    brushControl.loadPoints(brushLerpSpline[0], brushLerpSpline[1]);
+    brushControl.draw();
+    brushControl.onChange();
 
     lines = JSON.parse(localStorage.getItem('linesv2')) || [];
     updateHistoryBtns();
@@ -472,35 +500,54 @@ saveImgBtn.onclick = () => {
     document.body.removeChild(link);
 };
 
-minDotSizeInput.onchange = () => {
-    minDotSize = minDotSizeInput.value;
+minThicknessInput.onchange = () => {
+    minThickness = minThicknessInput.value;
+    brushControl.axisRangeY = [minThickness, maxThickness];
+    brushControl.draw();
+    brushControl.onChange();
     saveState();
 };
 
-maxDotSizeInput.onchange = () => {
-    maxDotSize = maxDotSizeInput.value;
+maxThicknessInput.onchange = () => {
+    maxThickness = maxThicknessInput.value;
+    brushControl.axisRangeY = [minThickness, maxThickness];
+    brushControl.draw();
+    brushControl.onChange();
+
     saveState();
 };
 
-dotSizeNumPtsInput.onchange = () => {
-    dotSizeNumPts = dotSizeNumPtsInput.value;
+speedThresholdInput.onchange = () => {
+    speedThreshold = speedThresholdInput.value;
+    brushControl.axisRangeX = [0, speedThreshold];
+    brushControl.draw();
+    brushControl.onChange();
     saveState();
 };
 
-dotSizeLenPtsInput.onchange = () => {
-    dotSizeLenPts = dotSizeLenPtsInput.value;
+speedSampleTimeInput.onchange = () => {
+    speedSampleTime = speedSampleTimeInput.value;
     saveState();
 };
 
 resetDotParamBtn.onclick = () => {
-    minDotSize = 1;
-    minDotSizeInput.value = minDotSize
-    maxDotSize = 10;
-    maxDotSizeInput.value = maxDotSize;
-    dotSizeNumPts = 10;
-    dotSizeNumPtsInput.value = dotSizeNumPts;
-    dotSizeLenPts = 10;
-    dotSizeLenPtsInput.value = dotSizeLenPts;
+    minThickness = 1;
+    minThicknessInput.value = minThickness
+    maxThickness = 20;
+    maxThicknessInput.value = maxThickness;
+    speedThreshold = 1.5;
+    speedThresholdInput.value = speedThreshold;
+    speedSampleTime = 100;
+    speedSampleTimeInput.value = speedSampleTime;
+    brushControl.axisRangeY = [minThickness, maxThickness];
+    brushControl.axisRangeX = [0, speedThreshold];
+    brushControl.loadPoints([0, 1, 1.5], [20, 10, 1]);
+    brushControl.draw();
+    brushControl.onChange();
+    minRandomMultiplier = 0.5;
+    minRandomMultiplierInput.value = minRandomMultiplier;
+    maxRandomMultiplier = 1.5;
+    maxRandomMultiplierInput.value = maxRandomMultiplier;
     saveState();
 };
 
@@ -530,5 +577,243 @@ document.querySelectorAll('.colorChoiceBackground').forEach(el => {
     el.onclick = () => colorChoiceBackground(color);
 });
 
+minRandomMultiplierInput.onchange = () => {
+    minRandomMultiplier = parseFloat(minRandomMultiplierInput.value);
+    saveState();
+};
+
+maxRandomMultiplierInput.onchange = () => {
+    maxRandomMultiplier = parseFloat(maxRandomMultiplierInput.value);
+    saveState();
+};
+
+
+class BrushControl {
+    canvas;
+    ctx;
+    areaX;
+    areaY;
+    areaW;
+    areaH;
+    axisRangeX = [0, 1];
+    axisRangeY = [0, 1];
+    points = [];
+    dragging = false;
+    dotSize = 5;
+
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = this.canvas.getContext("2d");
+        this.updateDimensions();
+        this.points = [[0, this.areaH / 2], [this.areaW / 2, this.areaH / 2], [this.areaW - 1, this.areaH / 2]];
+        this.draw();
+
+        this.canvas.onmouseenter = (e) => {
+            if (e.which == 1)
+                this.mouseDown([e.offsetX, e.offsetY]);
+        };
+
+        this.canvas.onmousedown = (e) => {
+            //console.log('mousedown', e);
+            if (e.which == 1)
+                this.mouseDown([e.offsetX, e.offsetY]);
+            else if (e.which == 3)
+                this.rightClick([e.offsetX, e.offsetY]);
+        };
+
+        this.canvas.onmouseup = (e) => {
+            if (e.which == 1)
+                this.mouseUp([e.offsetX, e.offsetY]);
+        };
+
+        this.canvas.onmouseleave = (e) => {
+            if (e.which == 1)
+                this.mouseUp([e.offsetX, e.offsetY]);
+        };
+
+        this.canvas.onmousemove = (e) => {
+            if (e.which == 1)
+                this.mouseMove([e.offsetX, e.offsetY]);
+        };
+
+        this.canvas.ondblclick = (e) => {
+            if (e.which == 1)
+                this.doubleClick([e.offsetX, e.offsetY]);
+        };
+
+        this.canvas.oncontextmenu = (e) => {
+            e.preventDefault();
+        };
+
+    }
+
+    loadPoints(xPoints, yPoints) {
+        let points = [];
+        for (let i = 0; i < xPoints.length; i++) {
+            let [x, y] = [xPoints[i], yPoints[i]];
+            x = lerp(x, this.axisRangeX, [0, this.areaW]);
+            y = lerp(y, this.axisRangeY, [this.areaH, 0]);
+            points.push([x, y]);
+        }
+        this.points = points;
+    }
+
+    updateDimensions() {
+        this.areaX = 25;
+        this.areaY = 10;
+        this.areaW = this.canvas.width - 35;
+        this.areaH = this.canvas.height - 35;
+    }
+
+    drawAxis() {
+        this.ctx.strokeStyle = "#888";
+        this.ctx.fillStyle = "#888";
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.areaX, this.areaY);
+        this.ctx.lineTo(this.areaX, this.areaY + this.areaH);
+        this.ctx.lineTo(this.areaX + this.areaW, this.areaY + this.areaH);
+        this.ctx.stroke();
+
+        this.ctx.font = "12px sans-serif";
+        this.ctx.textAlign = "right";
+        this.ctx.fillText(this.axisRangeY[0], this.areaX - 10, this.areaY + this.areaH);
+        this.ctx.fillText(this.axisRangeY[1], this.areaX - 10, this.areaY + 5);
+
+        this.ctx.textAlign = "left";
+        this.ctx.fillText(this.axisRangeX[0], this.areaX, this.areaY + this.areaH + 20);
+        this.ctx.textAlign = "right";
+        this.ctx.fillText(this.axisRangeX[1], this.areaX + this.areaW, this.areaY + this.areaH + 20);
+    }
+
+    areaRelToCanvas([x, y]) {
+        return [this.areaX + x * this.areaW, this.areaY + y * this.areaH];
+    }
+
+    canvasToAreaRel([x, y]) {
+        return [lerp(x, [this.areaX, this.areaX + this.areaW], [0, 1]), lerp(y, [this.areaY, this.areaY + this.areaH], [0, 1])];
+    }
+
+    areaToCanvas([x, y]) {
+        return [this.areaX + x, this.areaY + y];
+    }
+
+    canvasToArea([x, y]) {
+        return [x - this.areaX, y - this.areaY];
+    }
+
+    pointAtCanvasPos(p) {
+        p = this.canvasToArea(p);
+        for (let i = 0; i < this.points.length; i++) {
+            if (dist_(this.points[i], p) <= this.dotSize)
+                return i;
+        }
+        return -1;
+    }
+
+    drawPoints() {
+        this.ctx.strokeStyle = "#666";
+        this.ctx.lineWidth = 1;
+        for (let i = 1; i < this.points.length; i++) {
+            let [x0, y0] = this.areaToCanvas(this.points[i - 1]);
+            let [x1, y1] = this.areaToCanvas(this.points[i]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(x0, y0);
+            this.ctx.lineTo(x1, y1);
+            this.ctx.stroke();
+        }
+
+        this.ctx.fillStyle = "#666";
+        for (let i = 0; i < this.points.length; i++) {
+            let [x, y] = this.areaToCanvas(this.points[i]);
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, this.dotSize, 0, Math.PI*2, true);
+            this.ctx.closePath();
+            this.ctx.fill();
+        }
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.drawAxis();
+        this.drawPoints();
+    }
+
+    mouseDown(p) {
+        this.activePtIdx = this.pointAtCanvasPos(p);
+        this.dragging = true;
+    }
+
+    mouseMove(p) {
+        if (!this.dragging)
+            return;
+
+        if (this.activePtIdx == -1)
+            return;
+
+        const [x, y] = this.canvasToArea(p);
+        if (x < 0 || x > this.areaW || y < 0 || y > this.areaH)
+            return;
+
+        if (this.activePtIdx == 0 || this.activePtIdx == this.points.length - 1) {
+            this.points[this.activePtIdx][1] = y;
+        } else {
+            if (this.points[this.activePtIdx - 1][0] <= x && this.points[this.activePtIdx + 1][0] >= x)
+                this.points[this.activePtIdx] = [x, y];
+            else
+                this.points[this.activePtIdx][1] = y;
+        }
+        this.draw();
+
+    }
+
+    mouseUp(p) {
+        this.dragging = false;
+        this.onChange();
+    }
+
+    doubleClick(p) {
+        if (this.activePtIdx != -1)
+            return;
+
+        const [x, y] = this.canvasToArea(p);
+        if (x < 0 || x >= this.areaW || y < 0 || y >= this.areaH)
+            return;
+
+        this.points.push([x, y]);
+        this.points.sort(([x0, y0], [x1, y1]) => x0 - x1);
+        this.draw();
+        this.onChange();
+    }
+
+    rightClick(p) {
+        const i = this.pointAtCanvasPos(p);
+        if (i != -1 && i != 0 && i != this.points.length - 1) {
+            this.points.splice(i, 1);
+            this.draw();
+            this.onChange();
+        }
+    }
+
+    getPoints() {
+        let xs = [];
+        let ys = [];
+        for (let i = 0; i < this.points.length; i++) {
+            let [x, y] = this.points[i];
+            x = lerp(x, [0, this.areaW], this.axisRangeX);
+            y = lerp(y, [this.areaH, 0], this.axisRangeY);
+            xs.push(x);
+            ys.push(y);
+        }
+        return [xs, ys];
+    }
+
+    onChange() {}
+}
+
+let brushControl = new BrushControl(document.getElementById("brushOptionsCanvas"));
+brushControl.onChange = () => {
+    brushLerpSpline = brushControl.getPoints();
+    saveState();
+};
 brush = new Brush();
 loadState();

@@ -38,7 +38,7 @@ input[type="number"] {
 }
 
 .col1 {
-    width: 150px;
+    width: 170px;
     display: inline-block;
 }
 
@@ -61,6 +61,7 @@ input[type="number"] {
     background: #f2f2f2;
     border-right: 1px solid #cdcdcd;
     padding: 10px;
+    overflow-y: auto;
 }
 
 #canvas {
